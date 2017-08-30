@@ -8,7 +8,7 @@ import javax.persistence.Table;
 import java.sql.Timestamp;
 
 @Entity
-@Table(name = "new_prices", schema = "javastudy", catalog = "")
+@Table(name = "new_prices", schema = "javastudy")
 public class NewPrices {
 
     @Id
@@ -106,5 +106,32 @@ public class NewPrices {
                 ", end=" + end +
                 ", value=" + value +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        NewPrices newPrices = (NewPrices) o;
+
+        if (productCode != null ? !productCode.equals(newPrices.productCode) : newPrices.productCode != null)
+            return false;
+        if (number != null ? !number.equals(newPrices.number) : newPrices.number != null) return false;
+        if (depart != null ? !depart.equals(newPrices.depart) : newPrices.depart != null) return false;
+        if (begin != null ? !begin.equals(newPrices.begin) : newPrices.begin != null) return false;
+        if (end != null ? !end.equals(newPrices.end) : newPrices.end != null) return false;
+        return value != null ? value.equals(newPrices.value) : newPrices.value == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = productCode != null ? productCode.hashCode() : 0;
+        result = 31 * result + (number != null ? number.hashCode() : 0);
+        result = 31 * result + (depart != null ? depart.hashCode() : 0);
+        result = 31 * result + (begin != null ? begin.hashCode() : 0);
+        result = 31 * result + (end != null ? end.hashCode() : 0);
+        result = 31 * result + (value != null ? value.hashCode() : 0);
+        return result;
     }
 }

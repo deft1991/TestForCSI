@@ -120,4 +120,30 @@ public class Prices {
                 ", value=" + value +
                 '}';
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Prices prices = (Prices) o;
+
+        if (productCode != null ? !productCode.equals(prices.productCode) : prices.productCode != null) return false;
+        if (number != null ? !number.equals(prices.number) : prices.number != null) return false;
+        if (depart != null ? !depart.equals(prices.depart) : prices.depart != null) return false;
+        if (begin != null ? !begin.equals(prices.begin) : prices.begin != null) return false;
+        if (end != null ? !end.equals(prices.end) : prices.end != null) return false;
+        return value != null ? value.equals(prices.value) : prices.value == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = productCode != null ? productCode.hashCode() : 0;
+        result = 31 * result + (number != null ? number.hashCode() : 0);
+        result = 31 * result + (depart != null ? depart.hashCode() : 0);
+        result = 31 * result + (begin != null ? begin.hashCode() : 0);
+        result = 31 * result + (end != null ? end.hashCode() : 0);
+        result = 31 * result + (value != null ? value.hashCode() : 0);
+        return result;
+    }
 }

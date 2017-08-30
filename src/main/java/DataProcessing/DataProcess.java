@@ -24,7 +24,7 @@ public class DataProcess {
             Query query = session.createQuery("from Prices p " +
                     "where p.productCode = :productCode " +
                     "and p.number = :numb " +
-                    "and p.depart = :depart ");
+                    "and p.depart = :depart  order by p.begin");
             query.setParameter("productCode", productCode);
             query.setParameter("numb", numb);
             query.setParameter("depart", depart);
@@ -51,94 +51,127 @@ public class DataProcess {
     }
 
     public static void updatePrices(List<NewPrices> newPricesList) {
+        List<Prices> rezList = new ArrayList<Prices>();
         for (int i = 0; i < newPricesList.size(); i++) {
             NewPrices newPrice = newPricesList.get(i);
-            Integer productCode = newPrice.getProductCode();
-            Integer number = newPrice.getNumber();
-            Integer depart = newPrice.getDepart();
-            Timestamp begin = newPrice.getBegin();
-            Timestamp end = newPrice.getEnd();
-            Integer value = newPrice.getValue();
-            List<Prices> oldPricesList = getOldPrices(productCode, number, depart);
+
+            List<Prices> oldPricesList = getOldPrices(newPrice.getProductCode(), newPrice.getNumber(), newPrice.getDepart());
             // если нет старой записи то создадим ее
             if (oldPricesList == null) {
                 saveDataForNewPrice(newPrice);
                 continue;
             }
-
             for (int j = 0; j < oldPricesList.size(); j++) {
                 Prices oldPrice = oldPricesList.get(j);
-                // если цена пустая
-                if (oldPrice.getValue() == null) {
-                    oldPrice.setValue(value);
-                    oldPrice.setBegin(begin);
-                    oldPrice.setEnd(end);
+
+                Prices tmpPrice = new Prices(newPrice.getProductCode()
+                        , newPrice.getNumber()
+                        , newPrice.getDepart()
+                        , newPrice.getBegin()
+                        , newPrice.getEnd()
+                        , newPrice.getValue());
+                if (!oldPrice.equals(tmpPrice)) {
+                    if (newPrice.getBegin().after(oldPrice.getBegin())
+                            && newPrice.getBegin().before(oldPrice.getEnd())
+                            && newPrice.getEnd().before(oldPrice.getEnd())) {
+                        if (newPrice.getValue() != oldPrice.getValue()) {
+                            Timestamp temp = oldPrice.getEnd();
+                            oldPrice.setEnd(newPrice.getBegin());
+
+                            Prices createPrice = new Prices(
+                                    oldPrice.getProductCode()
+                                    , oldPrice.getNumber()
+                                    , oldPrice.getDepart()
+                                    , newPrice.getEnd()
+                                    , temp
+                                    , oldPrice.getValue());
+                            rezList.add(createPrice);
+                        }
+                    }
+                    // если цены совпадают то продлеваем период или создаем новую запись
+                    if (newPrice.getValue().equals(oldPrice.getValue())) {
+                        if (newPrice.getBegin().after(oldPrice.getBegin()) || newPrice.getBegin().equals(oldPrice.getEnd())) {
+                            oldPrice.setEnd(newPrice.getEnd());
+                            newPricesList.remove(newPrice);
+                            i--;
+                        }
+                    }
+                    if (newPrice.getBegin().equals(oldPrice.getBegin())
+                            && newPrice.getEnd().before(oldPrice.getEnd())
+                            && newPrice.getEnd().before(oldPrice.getEnd())) {
+                        oldPrice.setBegin(newPrice.getEnd());
+                    }
+                    if (newPrice.getEnd().equals(oldPrice.getEnd())
+                            && newPrice.getEnd().before(oldPrice.getEnd())
+                            && newPrice.getBegin().after(oldPrice.getBegin())) {
+                        oldPrice.setEnd(newPrice.getBegin());
+                    }
+                    if ((newPrice.getBegin().after(oldPrice.getBegin()) || newPrice.getBegin().equals(oldPrice.getBegin()))
+                            && newPrice.getBegin().before(oldPrice.getEnd())
+                            && newPrice.getEnd().after(oldPrice.getEnd())) {
+                        if (newPrice.getValue() == oldPrice.getValue()) {
+                            oldPrice.setEnd(newPrice.getEnd());
+                        } else {
+                            oldPrice.setEnd(newPrice.getBegin());
+                        }
+                    }
+                    if (newPrice.getBegin().before(oldPrice.getBegin())
+                            && newPrice.getEnd().after(oldPrice.getBegin())
+                            && newPrice.getEnd().before(oldPrice.getEnd())) {
+                        if (newPrice.getValue() == oldPrice.getValue()) {
+                            oldPrice.setBegin(newPrice.getBegin());
+                        } else {
+                            oldPrice.setBegin(newPrice.getEnd());
+                        }
+                    }
+                    if ((newPrice.getEnd().after(oldPrice.getBegin()) || newPrice.getEnd().equals(oldPrice.getBegin()))
+                            && newPrice.getEnd().before(oldPrice.getEnd())
+                            && newPrice.getBegin().before(oldPrice.getBegin())) {
+                        oldPrice.setBegin(newPrice.getEnd());
+                    }
+                } else {
+                    newPricesList.remove(newPrice);
+                    i--;
+                }
+            }
+            // ищем цены для удаления и апдэйтим
+            for (Prices oldPrice : oldPricesList) {
+                if (!oldPrice.getBegin().equals(oldPrice.getEnd())) {
                     Transaction tx = session.getTransaction();
                     tx.begin();
                     session.update(oldPrice);
                     tx.commit();
+                } else {
+                    Transaction tx = session.getTransaction();
+                    tx.begin();
+                    session.remove(oldPrice);
+                    tx.commit();
                 }
-                // если цены равны и ...
-//                if (oldPrice.getValue().equals(value)) {
-//                    updateDataForEqualsPrices(newPrice, oldPrice);
-//                } else {
-                // если дата начала новой цены больше даты начала старой, но меньше конца
-                // и дата окончания новой цены больше даты окончания старой цены
-//                    if (begin.after(oldPrice.getBegin())
-//                            && (begin.before(oldPrice.getEnd()) || begin.equals(oldPrice.getEnd()))
-//                            && end.after(oldPrice.getEnd())) {
-//                        oldPrice.setEnd(begin);
-//                        Transaction tx = session.getTransaction();
-//                        tx.begin();
-//                        session.update(oldPrice);
-//                        tx.commit();
-//                        Prices price = new Prices(productCode, number, depart, begin, end, value);
-//                        tx.begin();
-//                        session.save(price);
-//                        tx.commit();
-//
-//                    }
-//                     если дата начала новой цены больше даты начала старой, но меньше\равна концу
-                // , а дата окончания новой цены меньше даты окончания старой цены
-//                    if (begin.after(oldPrice.getBegin()) && (begin.before(oldPrice.getEnd()) || begin.equals(oldPrice.getEnd())) && end.before(oldPrice.getEnd())) {
-//                        Timestamp oldPriceDateEnd = oldPrice.getEnd();
-//                        oldPrice.setEnd(begin);
-//                        Transaction tx = session.getTransaction();
-//                        tx.begin();
-//                        session.update(oldPrice);
-//                        tx.commit();
-//                        Prices price = new Prices(productCode, number, depart, begin, end, value);
-//                        tx.begin();
-//                        session.save(price);
-//                        tx.commit();
-//                        Prices price2 = new Prices(productCode, number, depart, end, oldPriceDateEnd, oldPrice.getValue());
-//                        tx.begin();
-//                        session.save(price2);
-//                        tx.commit();
-//                    }
-//                    if (begin.after(oldPrice.getEnd())) {
-//                        saveDataForNewPrice(newPrice);
-//                    }
-//                }
+            }
+            for (Prices prices : rezList) {
+                Transaction tx = session.getTransaction();
+                tx.begin();
+                session.save(prices);
+                tx.commit();
             }
         }
-    }
+        for (NewPrices newPrices : newPricesList) {
+            // добавляем новые цены. если цены совпадают не добавляем
+            Prices createPrice = new Prices(
+                    newPrices.getProductCode()
+                    , newPrices.getNumber()
+                    , newPrices.getDepart()
+                    , newPrices.getBegin()
+                    , newPrices.getEnd()
+                    , newPrices.getValue());
+            Transaction tx = session.getTransaction();
+            tx.begin();
+            session.save(createPrice);
+            tx.commit();
+        }
 
-//    private static void updateDataForEqualsPrices(NewPrices newPrice, Prices oldPrice) {
-//        // если новая дата до старой даты, не знаю нужно ли обновлять, но обновлю
-//        if (newPrice.getBegin().before(oldPrice.getBegin())) {
-//            oldPrice.setBegin(newPrice.getBegin());
-//        }
-//        // если новая дата после старой даты и
-//        // начало нд до окончания старой даты
-//        if (newPrice.getEnd().after(oldPrice.getEnd()) && newPrice.getBegin().before(oldPrice.getBegin())) {
-//            oldPrice.setEnd(newPrice.getEnd());
-//        }
-//        Transaction tx = session.beginTransaction();
-//        session.update(oldPrice);
-//        session.flush();
-//        tx.commit();
-//    }
+
+    }
 
     private static void saveDataForNewPrice(NewPrices newPrice) {
         Transaction tx = session.beginTransaction();
