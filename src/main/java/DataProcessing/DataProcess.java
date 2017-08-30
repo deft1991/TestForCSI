@@ -18,7 +18,7 @@ public class DataProcess {
         createBDConnection();
     }
 
-    public static List<Prices> getOldPrices(Integer productCode, Integer numb, Integer depart) {
+    private static List<Prices> getOldPrices(Integer productCode, Integer numb, Integer depart) {
         List<Prices> oldPricesList = new ArrayList<Prices>();
         try {
             Query query = session.createQuery("from Prices p " +
@@ -74,7 +74,7 @@ public class DataProcess {
                     if (newPrice.getBegin().after(oldPrice.getBegin())
                             && newPrice.getBegin().before(oldPrice.getEnd())
                             && newPrice.getEnd().before(oldPrice.getEnd())) {
-                        if (newPrice.getValue() != oldPrice.getValue()) {
+                        if (!newPrice.getValue().equals(oldPrice.getValue())) {
                             Timestamp temp = oldPrice.getEnd();
                             oldPrice.setEnd(newPrice.getBegin());
 
@@ -109,7 +109,7 @@ public class DataProcess {
                     if ((newPrice.getBegin().after(oldPrice.getBegin()) || newPrice.getBegin().equals(oldPrice.getBegin()))
                             && newPrice.getBegin().before(oldPrice.getEnd())
                             && newPrice.getEnd().after(oldPrice.getEnd())) {
-                        if (newPrice.getValue() == oldPrice.getValue()) {
+                        if (newPrice.getValue().equals(oldPrice.getValue())) {
                             oldPrice.setEnd(newPrice.getEnd());
                         } else {
                             oldPrice.setEnd(newPrice.getBegin());
@@ -118,7 +118,7 @@ public class DataProcess {
                     if (newPrice.getBegin().before(oldPrice.getBegin())
                             && newPrice.getEnd().after(oldPrice.getBegin())
                             && newPrice.getEnd().before(oldPrice.getEnd())) {
-                        if (newPrice.getValue() == oldPrice.getValue()) {
+                        if (newPrice.getValue().equals(oldPrice.getValue())) {
                             oldPrice.setBegin(newPrice.getBegin());
                         } else {
                             oldPrice.setBegin(newPrice.getEnd());
